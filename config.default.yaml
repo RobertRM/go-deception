@@ -1,0 +1,10 @@
+listeners:
+  - name: "http-listener"
+    enabled: true
+    protocol: "http"
+    port: 8080
+    routes:
+      - path: "/test"
+        response:
+          status_code: 200
+          body: "Hello, World!"
