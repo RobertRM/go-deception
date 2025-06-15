@@ -1,10 +1,40 @@
+# -----------------------------------------------------------------------------
+# Default Configuration for Deception Tool v0.1
+#
+# To use, copy this file to 'config.yaml' and run the application.
+# -----------------------------------------------------------------------------
+
 listeners:
-  - name: "http-listener"
+  # --- Apache Server Honeypot ---
+  # This listener emulates a default Apache web server on port 8889.
+  - name: "Apache Honeypot"
     enabled: true
     protocol: "http"
-    port: 8080
+    port: 8889
     routes:
-      - path: "/test"
+      # A single route for the root path '/' to serve the default page.
+      - path: "/"
         response:
-          status_code: 200
-          body: "Hello, World!"
+          code: 200 # HTTP 200 OK
+          template: "apache_default.html"
+          headers:
+            # A plausible Server header to increase believability.
+            Server: "Apache/2.4.54 (Ubuntu)"
+            Content-Type: "text/html; charset=UTF-8"
+
+  # --- Nginx Server Honeypot ---
+  # This listener emulates a default Nginx web server on port 8890.
+  - name: "Nginx Honeypot"
+    enabled: true
+    protocol: "http"
+    port: 8890
+    routes:
+      # A single route for the root path '/' to serve the default page.
+      - path: "/"
+        response:
+          code: 200 # HTTP 200 OK
+          template: "nginx_default.html"
+          headers:
+            # A plausible Server header for a modern Nginx version.
+            Server: "nginx/1.24.0"
+            Content-Type: "text/html"
