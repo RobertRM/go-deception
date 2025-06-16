@@ -11,46 +11,64 @@ import (
 type HTTPServer struct {
 	listener config.Listener
 	logger   *slog.Logger
-	mux      *http.ServeMux
+	server   *http.Server
 }
 
-func NewHTTPServer(listener config.Listener, logger *slog.Logger, mux *http.ServeMux) *HTTPServer {
-	if mux == nil {
-		mux = http.NewServeMux()
+func NewHTTPServer(listener config.Listener, logger *slog.Logger, server *http.Server) Server {
+	if server == nil {
+		mux := BuildMuxForListener(listener, logger)
+		server = &http.Server{
+			Addr:    fmt.Sprintf(":%d", listener.Port),
+			Handler: mux,
+		}
 	}
 
-	server := &HTTPServer{
+	return &HTTPServer{
 		listener: listener,
 		logger:   logger,
-		mux:      mux,
+		server:   server,
 	}
-
-	// register routes defined in listener
-	server.registerRoutes()
-
-	return server
 }
 
 func (s *HTTPServer) Start() error {
-	return nil
+	if s.server == nil {
+		return fmt.Errorf("server not initialized")
+	}
+
+	return s.server.ListenAndServe()
 }
 
 func (s *HTTPServer) Stop() error {
-	return nil
-}
-
-func (s *HTTPServer) registerRoutes() {
-	for _, route := range s.listener.Routes {
-		currentRoute := route
-		handler := func(w http.ResponseWriter, r *http.Request) {
-			s.handleRequest(w, r, currentRoute)
-		}
-		s.mux.HandleFunc(currentRoute.Path, handler)
+	if s.server == nil {
+		return nil
 	}
+
+	return s.server.Close()
 }
 
-func (s *HTTPServer) handleRequest(w http.ResponseWriter, r *http.Request, route config.Route) {
-	// Need to implement the body, template and headers in the response
-	s.logger.Info("Request received", "path", r.URL.Path, "method", r.Method, "source_ip", r.RemoteAddr)
-	fmt.Fprintf(w, "Response for %s on listener %s", route.Path, s.listener.Name)
+func BuildMuxForListener(listener config.Listener, logger *slog.Logger) *http.ServeMux {
+	mux := http.NewServeMux()
+
+	for _, route := range listener.Routes {
+		currentRoute := route
+		handler := &routeHandler{
+			route:  currentRoute,
+			logger: logger,
+		}
+
+		mux.Handle(currentRoute.Path, handler)
+	}
+
+	return mux
+}
+
+// implements http.Handler
+type routeHandler struct {
+	route  config.Route
+	logger *slog.Logger
+}
+
+func (h *routeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.logger.Info("Request received", "path", r.URL.Path, "method", r.Method, "source_ip", r.RemoteAddr)
+	fmt.Fprintf(w, "Response for %s", h.route.Path)
 }
