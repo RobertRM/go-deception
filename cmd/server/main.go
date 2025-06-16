@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
 	"github.com/RobertRM/go-deception/internal/config"
 	"github.com/RobertRM/go-deception/internal/server"
@@ -12,11 +15,6 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	mydir, err := os.Getwd()
-	if err != nil {
-		logger.Error("failed to get working directory", "error", err)
-	}
-	logger.Info("working directory", "path", mydir)
 
 	logger.Info("getting config")
 	config, err := config.Load("config.yaml")
@@ -49,15 +47,15 @@ func main() {
 	}
 
 	for _, srv := range runningServers {
-		currentSrv := srv
+		serverInstance := srv
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			logger.Info("starting server", "name", currentSrv.Start())
-			if err := currentSrv.Start(); err != nil {
-				logger.Error("failed to start server", "error", err)
+			logger.Info("http server starting", "name", serverInstance.Name())
+
+			if err := serverInstance.Start(); err != nil && err != http.ErrServerClosed {
+				logger.Error("http server failed unexpectedly", "name", serverInstance.Name(), "error", err)
 			}
-			logger.Info("server stopped", "name", currentSrv.Stop())
 		}()
 	}
 
@@ -66,6 +64,22 @@ func main() {
 	<-shutdownChan
 
 	logger.Info("shutting down")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	for _, srv := range runningServers {
+
+		go func(s server.Server) {
+			wg.Add(1)
+			defer wg.Done()
+			logger.Info("http server stopping", "name", s.Name())
+			if err := s.Stop(shutdownCtx); err != nil {
+				logger.Error("failed to stop server", "error", err)
+			}
+			logger.Info("http server stopped", "name", s.Name())
+		}(srv)
+	}
 
 	wg.Wait()
 

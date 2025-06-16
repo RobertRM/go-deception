@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -30,6 +31,10 @@ func NewHTTPServer(listener config.Listener, logger *slog.Logger, server *http.S
 	}
 }
 
+func (s *HTTPServer) Name() string {
+	return s.listener.Name
+}
+
 func (s *HTTPServer) Start() error {
 	if s.server == nil {
 		return fmt.Errorf("server not initialized")
@@ -38,12 +43,12 @@ func (s *HTTPServer) Start() error {
 	return s.server.ListenAndServe()
 }
 
-func (s *HTTPServer) Stop() error {
+func (s *HTTPServer) Stop(ctx context.Context) error {
 	if s.server == nil {
 		return nil
 	}
 
-	return s.server.Close()
+	return s.server.Shutdown(ctx)
 }
 
 func BuildMuxForListener(listener config.Listener, logger *slog.Logger) *http.ServeMux {
