@@ -57,22 +57,22 @@ func validateAndSetDefaults(config *Config) error {
 		return fmt.Errorf("no listeners configured")
 	}
 
-	for _, listener := range config.Listeners {
-		if listener.Protocol == "" {
-			listener.Protocol = "http"
+	for i := range config.Listeners {
+		if config.Listeners[i].Protocol == "" {
+			config.Listeners[i].Protocol = "http"
 		}
 
-		if listener.Port < 1 || listener.Port > 65535 {
-			return fmt.Errorf("invalid port number: %d", listener.Port)
+		if config.Listeners[i].Port < 1 || config.Listeners[i].Port > 65535 {
+			return fmt.Errorf("invalid port number: %d", config.Listeners[i].Port)
 		}
 
-		for _, route := range listener.Routes {
-			if route.Response.StatusCode == 0 {
-				route.Response.StatusCode = 200
+		for j := range config.Listeners[i].Routes {
+			if config.Listeners[i].Routes[j].Response.StatusCode == 0 {
+				config.Listeners[i].Routes[j].Response.StatusCode = 200
 			}
 
-			if route.Response.Template == "" && route.Response.Body == "" {
-				return fmt.Errorf("listener '%s' is missing body or template for route '%s'", listener.Name, route.Path)
+			if config.Listeners[i].Routes[j].Response.Template == "" && config.Listeners[i].Routes[j].Response.Body == "" {
+				return fmt.Errorf("listener '%s' is missing body or template for route '%s'", config.Listeners[i].Name, config.Listeners[i].Routes[j].Path)
 			}
 		}
 	}
