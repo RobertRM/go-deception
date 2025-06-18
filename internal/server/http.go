@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"text/template"
 
 	"github.com/RobertRM/go-deception/internal/config"
 )
@@ -57,8 +58,9 @@ func BuildMuxForListener(listener config.Listener, logger *slog.Logger) *http.Se
 	for _, route := range listener.Routes {
 		currentRoute := route
 		handler := &routeHandler{
-			route:  currentRoute,
-			logger: logger,
+			route:    currentRoute,
+			logger:   logger,
+			listener: listener,
 		}
 
 		mux.Handle(currentRoute.Path, handler)
@@ -69,11 +71,42 @@ func BuildMuxForListener(listener config.Listener, logger *slog.Logger) *http.Se
 
 // implements http.Handler
 type routeHandler struct {
-	route  config.Route
-	logger *slog.Logger
+	route    config.Route
+	listener config.Listener
+	logger   *slog.Logger
 }
 
 func (h *routeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.logger.Info("Request received", "path", r.URL.Path, "method", r.Method, "source_ip", r.RemoteAddr)
-	fmt.Fprintf(w, "Response for %s", h.route.Path)
+
+	h.logger.Info(
+		"Request received",
+		"listener", h.listener.Name,
+		"source_ip", r.RemoteAddr,
+		"method", r.Method,
+		"path", r.URL.Path,
+	)
+
+	for key, value := range h.route.Response.Headers {
+		w.Header().Set(key, value)
+	}
+
+	if h.route.Response.Template != "" {
+		tmpl, err := template.ParseFS(templateFS, "templates/"+h.route.Response.Template)
+		if err != nil {
+			h.logger.Error("Failed to parse template", "template", h.route.Response.Template, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(h.route.Response.StatusCode)
+
+		err = tmpl.Execute(w, h.route.Response.Vars)
+		if err != nil {
+			h.logger.Error("Failed to execute template", "template", h.route.Response.Template, "error", err)
+		}
+
+	} else {
+		w.WriteHeader(h.route.Response.StatusCode)
+		fmt.Fprint(w, h.route.Response.Body)
+	}
 }
