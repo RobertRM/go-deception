@@ -94,6 +94,18 @@ func (h *routeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"source_ip", r.RemoteAddr,
 		"method", r.Method,
 		"path", r.URL.Path,
+		"query", r.URL.RawQuery,
+		"headers", r.Header,
+		"body", r.Body,
+		"content_length", r.ContentLength,
+		"host", r.Host,
+		"form", r.Form,
+		"post_form", r.PostForm,
+		"multipart_form", r.MultipartForm,
+		"trailer", r.Trailer,
+		"transfer_encoding", r.TransferEncoding,
+		"remote_addr", r.RemoteAddr,
+		"request_uri", r.RequestURI,
 	)
 
 	for key, value := range h.route.Response.Headers {
