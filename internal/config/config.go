@@ -67,6 +67,8 @@ func validateAndSetDefaults(config *Config) error {
 		// verify unique ports for listeners
 		if ok := ports[config.Listeners[i].Port]; ok {
 			return fmt.Errorf("duplicate port number: %d", config.Listeners[i].Port)
+		} else {
+			ports[config.Listeners[i].Port] = true
 		}
 
 		if config.Listeners[i].Protocol == "" {
@@ -84,6 +86,8 @@ func validateAndSetDefaults(config *Config) error {
 					config.Listeners[i].Name,
 					config.Listeners[i].Routes[j].Path,
 				)
+			} else {
+				routePaths[config.Listeners[i].Routes[j].Path] = true
 			}
 
 			if config.Listeners[i].Routes[j].Response.StatusCode == 0 {
