@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"text/template"
@@ -54,6 +55,15 @@ func (s *HTTPServer) Stop(ctx context.Context) error {
 
 func BuildMuxForListener(listener config.Listener, logger *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
+
+	// add static resources
+	contentRoot, err := fs.Sub(iconsFS, "templates/icons")
+	if err != nil {
+		logger.Error("Failed to create sub filesystem for icons", "error", err)
+	} else {
+		fileServer := http.FileServer(http.FS(contentRoot))
+		mux.Handle("/icons/", http.StripPrefix("/icons/", fileServer))
+	}
 
 	for _, route := range listener.Routes {
 		currentRoute := route
