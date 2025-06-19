@@ -57,7 +57,18 @@ func validateAndSetDefaults(config *Config) error {
 		return fmt.Errorf("no listeners configured")
 	}
 
+	ports := make(map[int]bool)
+
 	for i := range config.Listeners {
+		if !config.Listeners[i].Enabled {
+			continue
+		}
+
+		// verify unique ports for listeners
+		if ok := ports[config.Listeners[i].Port]; ok {
+			return fmt.Errorf("duplicate port number: %d", config.Listeners[i].Port)
+		}
+
 		if config.Listeners[i].Protocol == "" {
 			config.Listeners[i].Protocol = "http"
 		}
@@ -65,14 +76,26 @@ func validateAndSetDefaults(config *Config) error {
 		if config.Listeners[i].Port < 1 || config.Listeners[i].Port > 65535 {
 			return fmt.Errorf("invalid port number: %d", config.Listeners[i].Port)
 		}
-
+		routePaths := make(map[string]bool)
 		for j := range config.Listeners[i].Routes {
+			if ok := routePaths[config.Listeners[i].Routes[j].Path]; ok {
+				return fmt.Errorf(
+					"listener '%s' has duplicate route path: %s",
+					config.Listeners[i].Name,
+					config.Listeners[i].Routes[j].Path,
+				)
+			}
+
 			if config.Listeners[i].Routes[j].Response.StatusCode == 0 {
 				config.Listeners[i].Routes[j].Response.StatusCode = 200
 			}
 
 			if config.Listeners[i].Routes[j].Response.Template == "" && config.Listeners[i].Routes[j].Response.Body == "" {
-				return fmt.Errorf("listener '%s' is missing body or template for route '%s'", config.Listeners[i].Name, config.Listeners[i].Routes[j].Path)
+				return fmt.Errorf(
+					"listener '%s' is missing body or template for route '%s'",
+					config.Listeners[i].Name,
+					config.Listeners[i].Routes[j].Path,
+				)
 			}
 		}
 	}
