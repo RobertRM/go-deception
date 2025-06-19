@@ -146,6 +146,34 @@ func TestValidateAndSetDefaults(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "duplicate port",
+			config: &Config{
+				Listeners: []Listener{
+					{Name: "http-listener", Enabled: true, Protocol: "http", Port: 8080},
+					{Name: "http-listener", Enabled: true, Protocol: "http", Port: 8080},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "duplicate path",
+			config: &Config{
+				Listeners: []Listener{
+					{
+						Name:     "http-listener",
+						Enabled:  true,
+						Protocol: "http",
+						Port:     8080,
+						Routes: []Route{
+							{Path: "/duplicate"},
+							{Path: "/duplicate"},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "valid config",
 			config: &Config{
 				Listeners: []Listener{
