@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,11 +13,13 @@ type Config struct {
 }
 
 type Listener struct {
-	Name     string  `yaml:"name"`
-	Enabled  bool    `yaml:"enabled"`
-	Protocol string  `yaml:"protocol"`
-	Port     int     `yaml:"port"`
-	Routes   []Route `yaml:"routes"`
+	Name         string        `yaml:"name"`
+	Enabled      bool          `yaml:"enabled"`
+	Protocol     string        `yaml:"protocol"`
+	Port         int           `yaml:"port"`
+	Routes       []Route       `yaml:"routes"`
+	ReadTimeout  time.Duration `yaml:"read_timeout"`
+	WriteTimeout time.Duration `yaml:"write_timeout"`
 }
 
 type Route struct {
@@ -63,21 +66,35 @@ func validateAndSetDefaults(config *Config) error {
 		if !config.Listeners[i].Enabled {
 			continue
 		}
+		// required
+		if config.Listeners[i].Name == "" {
+			return fmt.Errorf("listener name is required")
+		}
 
-		// verify unique ports for listeners
+		// validations
 		if ok := ports[config.Listeners[i].Port]; ok {
 			return fmt.Errorf("duplicate port number: %d", config.Listeners[i].Port)
 		} else {
 			ports[config.Listeners[i].Port] = true
 		}
 
+		if config.Listeners[i].Port < 1 || config.Listeners[i].Port > 65535 {
+			return fmt.Errorf("invalid port number: %d", config.Listeners[i].Port)
+		}
+
+		// defaults
 		if config.Listeners[i].Protocol == "" {
 			config.Listeners[i].Protocol = "http"
 		}
 
-		if config.Listeners[i].Port < 1 || config.Listeners[i].Port > 65535 {
-			return fmt.Errorf("invalid port number: %d", config.Listeners[i].Port)
+		if config.Listeners[i].ReadTimeout == 0 {
+			config.Listeners[i].ReadTimeout = time.Second * 30 // default 30 seconds
 		}
+
+		if config.Listeners[i].WriteTimeout == 0 {
+			config.Listeners[i].WriteTimeout = time.Second * 30 // default 30 seconds
+		}
+
 		routePaths := make(map[string]bool)
 		for j := range config.Listeners[i].Routes {
 			if ok := routePaths[config.Listeners[i].Routes[j].Path]; ok {

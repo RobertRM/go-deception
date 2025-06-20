@@ -21,8 +21,10 @@ func NewHTTPServer(listener config.Listener, logger *slog.Logger, server *http.S
 	if server == nil {
 		mux := BuildMuxForListener(listener, logger)
 		server = &http.Server{
-			Addr:    fmt.Sprintf(":%d", listener.Port),
-			Handler: mux,
+			Addr:         fmt.Sprintf(":%d", listener.Port),
+			Handler:      mux,
+			ReadTimeout:  listener.ReadTimeout,
+			WriteTimeout: listener.WriteTimeout,
 		}
 	}
 
